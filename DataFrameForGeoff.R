@@ -20,6 +20,3 @@ siteData=read.csv("C:\\Users\\Sam\\Desktop\\spatial\\sites\\sites_elevation_uaa_
 tempData=left_join(tempData,siteData)
 
 write.csv(tempData,"NSV_GC_TempData.csv")
-
-
-

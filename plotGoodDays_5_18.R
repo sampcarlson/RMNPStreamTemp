@@ -28,3 +28,4 @@ windows(width=25)
 plot(deploymentDays,xaxt='n',xlim=as.Date(c('2014-08-01','2015-09-01')))
 axis.Date(side=1,at=formatDate[seq(from=1,to=900,by=15)], labels=formatDate[seq(from=1,to=900,by=15)])
 abline(h=10)
+

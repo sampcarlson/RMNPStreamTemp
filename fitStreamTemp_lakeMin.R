@@ -16,6 +16,7 @@ tempData=selectData[!selectData$depIDX%in%c(8,19,20),] #remove these
 #20 is redundant with 16
 
 
+
 km2_per_pixel=(9.14308^2)/(1000^2)
 tempData$Uaa=tempData$Uaa*km2_per_pixel
 
