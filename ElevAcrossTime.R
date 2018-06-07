@@ -72,14 +72,16 @@ summary(lm(Observation~Elevation, data=tempData1))
 
 
 source('~/R Projects/RMNPStreamTemp/fitStreamtemp_function.R')
-#little precip
-tempData1=tempData[tempData$DateTimeLocal>=as.Date("2014-09-17") & tempData$DateTimeLocal<=as.Date("2014-09-28"),]
+#moderate precip, early as possible w/ good n
+tempData1=tempData[tempData$DateTimeLocal>=as.Date("2014-08-23") & tempData$DateTimeLocal<=as.Date("2014-09-02"),]
 fitStreamTemp(tempData1)
 
 #much precip?
-tempData2=tempData[tempData$DateTimeLocal>=as.Date("2014-09-10") & tempData$DateTimeLocal<=as.Date("2014-09-12"),]
+tempData2=tempData[tempData$DateTimeLocal>=as.Date("2014-08-01") & tempData$DateTimeLocal<=as.Date("2014-10-13"),]
 fitStreamTemp(tempData2)
 
 #runoff
-tempData3=tempData[tempData$DateTimeLocal>=as.Date("2015-08-10") & tempData$DateTimeLocal<=as.Date("2014-08-20"),]
+tempData3=tempData[tempData$DateTimeLocal>=as.Date("2015-05-05") & tempData$DateTimeLocal<=as.Date("2015-05-15"),]
 fitStreamTemp(tempData3)
+
+#plot elev r2 against Q

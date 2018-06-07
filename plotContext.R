@@ -13,6 +13,7 @@ plotContext=function(startDate,endDate){
   
   flow=read.csv("bigThomMoraineParkFlow.csv")
   flow$DateTime=as.POSIXct(flow$dateTimeString)
+  flow=flow[flow$DateTime>=startDate & flow$DateTime<=endDate,]
   
   par(oma=c(0,3,0,1))
   plot(precip$date,precip$ppt_tot,ylim=c(max(precip$ppt_tot,na.rm=T)+10,0.8),type="h",lwd=6,col="lightBlue",xlab="date",ylab="precip")

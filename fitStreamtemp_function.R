@@ -1,7 +1,7 @@
 fitStreamTemp=function(tempData){
   source('~/R Projects/RMNPStreamTemp/plotContext.R')
   plotContext(min(tempData$day),max(tempData$day))
-  
+  print(paste("n =",length(unique(tempData$dep))))
   
   aggMeanFun=function(x){
     if (is.numeric(x)){
