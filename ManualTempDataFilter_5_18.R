@@ -134,6 +134,9 @@ setStatus("2015/3/17",depID = 30, status = 1)
 setStatus("2015/3/19",depID = 11, status = 1)
 setStatus("2015/3/22",depID = 6, status = 0)
 setStatus("2015/3/27",depID = 3, status = 1)
+setStatus("2015/4/14",depID = 6, status = 1)
+setStatus("2015/4/14",depID = 20, status = 1)
+
 setStatus("2015/4/22",depID = 28, status = 1)
 setStatus("2015/4/5",depID = 38, status = 0)
 setStatus("2015/4/17",depID = 38, status = 1)
@@ -159,5 +162,5 @@ windows(width=10,height=8)
 #plotDayPeriod(days[75],30)
 
 #here
-plotDayPeriod(days[488],2)
+plotDayPeriod(days[692],4)
 

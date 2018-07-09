@@ -44,7 +44,7 @@ buildTempData=function(){
   return(tempData)
 }
 
-fitElevUaa=function(tempData){
+fitSimpleModels=function(tempData){
   
   fitGetR_elev=function(date){
     date=as.Date(date)
@@ -58,6 +58,18 @@ fitElevUaa=function(tempData){
     r=summary(lm(tempDataDay$Observation~tempDataDay$uaa))$r.squared
     return(r)
   }
+  fitGetR_lf=function(date){
+    date=as.Date(date)
+    tempDataDay=tempData[tempData$DateTimeLocal==date,]
+    r=summary(lm(tempDataDay$Observation~tempDataDay$LF))$r.squared
+    return(r)
+  }
+  fitGetR_el=function(date){
+    date=as.Date(date)
+    tempDataDay=tempData[tempData$DateTimeLocal==date,]
+    r=summary(lm(tempDataDay$Observation~tempDataDay$FlowWtMeanLakeElev))$r.squared
+    return(r)
+  }
   getN=function(date){
     date=as.Date(date)
     tempDataDay=tempData[tempData$DateTimeLocal==date,]
@@ -68,10 +80,35 @@ fitElevUaa=function(tempData){
   fitDF=data.frame(day=unique(tempData$DateTimeLocal))
   fitDF$elev_r2=sapply(fitDF$day,FUN=fitGetR_elev)
   fitDF$uaa_r2=sapply(fitDF$day,FUN=fitGetR_uaa)
+  fitDF$lf_r2=sapply(fitDF$day,FUN=fitGetR_lf)
+  fitDF$el_r2=sapply(fitDF$day,FUN=fitGetR_el)
   fitDF$N=sapply(fitDF$day,FUN=getN)
+  
+  plotSimpleModels(fitDF)
   
   return(fitDF)
   
+}
+
+plotSimpleModels=function(fitDF){
+  
+  allDays=as.Date(min(fitDF$day):max(fitDF$day),origin="1970-01-01")
+  
+  plot(allDays,rep(1,length(allDays)),ylim=c(0,1),type="n",xlab="date",ylab="r^2")
+  
+  lines(fitDF$day,fitDF$elev_r2,col="blue",lwd=2)
+  lines(fitDF$day,fitDF$uaa_r2,col="blue",lwd=2,lty=3)
+  
+  lines(fitDF$day,fitDF$el_r2,col="darkgreen",lwd=2)
+  lines(fitDF$day,fitDF$lf_r2,col="darkgreen",lwd=2,lty=3)
+  
+  missing=is.na(sapply(allDays,match,fitDF$day))
+  
+  rect(xleft=allDays[missing][-1]-1,ybottom=0,xright=allDays[missing][-1],ytop=1,
+       col="white",border="white")
+  
+  legend(x="topright",legend=c("stream elev","stream uaa","lake elev","lake frac"),
+         col=c("blue","blue","darkgreen","darkgreen"),lty=c(1,3,1,3),lwd=2,bty="n",y.intersp=0.8)
 }
 
 filterToSet=function(set,thisTempData=tempData){
@@ -146,7 +183,7 @@ fitStreamTemp=function(tempData, plotContext=F){
   n=length(unique(tempData$SiteIDX))
   
   if(n == n_all){
-    print(paste("n =",n))
+    #  print(paste("n =",n))
   } else {
     print(paste0("n = ",n,", ",n_all-n," incomplete observations removed"))
   }
@@ -192,59 +229,67 @@ fitStreamTemp=function(tempData, plotContext=F){
     return(summary(lm(tempData$Observation~fitted(nlsName)))$r.squared)
   }
   
-  modelNames=data.frame(name=c('elevFit','uaaFit','lakeElevFit','lakeFit','streamElevuaa','weightedEl_Es','weightedEl_Us','weightedEl_Es_Us','flat_El_Es','flat_El_Es_Us'
-                               ,'flat_El_Us','flat_Lf_El','flat_Lf_El_Es','flat_Lf_El_Es_Us','flat_Lf_El_Us','flat_Lf_Es','flat_Lf_Es_Us','flat_Lf_Us'),internalModelID=0,stringsAsFactors = F)
+  modelNames=data.frame(name=c('Es','Us','El','Fl','Es_Us','Fl(Es_El)','Fl(Us_El)','Fl(Es_Us_El)','Es_El','Es_Us_El'
+                               ,'Us_El','El_Fl','Es_El_Fl','Es_Us_El_Fl','Us_El_Fl','Es_Fl','Es_Us_Fl','Us_Fl'),internalModelID=0,stringsAsFactors = F)
   
-  modelNames$internalModelID[modelNames$name=='elevFit']=
+  modelNames$internalModelID[modelNames$name=='Es']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ Elevation + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='uaaFit']=
+  modelNames$internalModelID[modelNames$name=='Us']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ uaa + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='lakeElevFit']=
+  modelNames$internalModelID[modelNames$name=='El']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ FlowWtMeanLakeElev + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='lakeFit']=
+  modelNames$internalModelID[modelNames$name=='Fl']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ LF + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='streamElevuaa']=
+  modelNames$internalModelID[modelNames$name=='Es_Us']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ Elevation + uaa + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='weightedEl_Es']=
+  modelNames$internalModelID[modelNames$name=='Fl(Es_El)']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ I(Elevation * (1 - LF)) + I(FlowWtMeanLakeElev * LF) + LF + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='weightedEl_Us']=
+  modelNames$internalModelID[modelNames$name=='Fl(Us_El)']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ I(FlowWtMeanLakeElev * LF) + LF + I(uaa * (1 - LF)) + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='weightedEl_Es_Us']=
+  modelNames$internalModelID[modelNames$name=='Fl(Es_Us_El)']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ I(Elevation * (1 - LF)) + I(FlowWtMeanLakeElev * LF) + LF + I(uaa * (1 - LF)) + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='flat_El_Es']=
+  modelNames$internalModelID[modelNames$name=='Es_El']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ Elevation + FlowWtMeanLakeElev + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='flat_El_Es_Us']=
+  modelNames$internalModelID[modelNames$name=='Es_Us_El']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ Elevation + FlowWtMeanLakeElev + uaa + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='flat_El_Us']=
+  modelNames$internalModelID[modelNames$name=='Us_El']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ FlowWtMeanLakeElev + uaa + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='flat_Lf_El']=
+  modelNames$internalModelID[modelNames$name=='El_Fl']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ FlowWtMeanLakeElev + LF + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='flat_Lf_El_Es']=
+  modelNames$internalModelID[modelNames$name=='Es_El_Fl']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ Elevation + FlowWtMeanLakeElev + LF + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='flat_Lf_El_Es_Us']=
+  modelNames$internalModelID[modelNames$name=='Es_Us_El_Fl']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ Elevation + FlowWtMeanLakeElev + LF + uaa + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='flat_Lf_El_Us']=
+  modelNames$internalModelID[modelNames$name=='Us_El_Fl']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ FlowWtMeanLakeElev + LF + uaa + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='flat_Lf_Es']=
+  modelNames$internalModelID[modelNames$name=='Es_Fl']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ Elevation + LF + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='flat_Lf_Es_Us']=
+  modelNames$internalModelID[modelNames$name=='Es_Us_Fl']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ Elevation + LF + uaa + 1, data = tempData, na.action = na.fail)"]
-  modelNames$internalModelID[modelNames$name=='flat_Lf_Us']=
+  modelNames$internalModelID[modelNames$name=='Us_Fl']=
     d$internalModelID[as.character(attributes(d)$model.calls)=="glm(formula = Observation ~ LF + uaa + 1, data = tempData, na.action = na.fail)"]
   
   d = d[d$internalModelID %in% modelNames$internalModelID]
   display=data.frame(internalModelID=d$internalModelID,r_2=d$`R^2`,AICc=d$AICc,deltaAICc=d$delta)
   display=merge(x=display,y=modelNames,by='internalModelID',all.x=TRUE,sort=FALSE)[,c('name','r_2','AICc','deltaAICc')]
-  
-  return(display)
+  display$dAICc_0=display$deltaAICc-min(display$deltaAICc)
+  return(display[,c("name","r_2","dAICc_0")])
 }
 
-makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01")){
+makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"), highlight=data.frame(start="2014-01-01",end="2014-01-02")){
+  
+  drawHighlight=function(cords=highlight){
+    cords$start=as.Date(cords$start)
+    cords$end=as.Date(cords$end)
+    cords$bottom=-20
+    cords$top=1000
+    rect(cords$start,cords$bottom,cords$end,cords$top, col=rgb(0.8,0.8,0.8,alpha=0.5),border=NA)
+  }
+  
   require(RSQLite)
   require(dplyr)
   startDate=as.Date(startDate)
   endDate=as.Date(endDate)
-  
   xlim=c(startDate,endDate)
   #plot flow, airtemp, precip
   precip=read.csv("NiwotRidgePrecip.csv",stringsAsFactors = F)
@@ -298,13 +343,24 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
   dayTemp=dayTemp[as.Date(dayTemp$date)>=startDate & as.Date(dayTemp$date)<=endDate,]
   dayTemp$date=as.Date(dayTemp$date)
   
+  
+  
   #make plot
   windows(width=7.5, height=10)
+  
+  #backround highlights plot
+  par(oma=c(1,1,0,2))
+  plot(plotPrecip$date,plotPrecip$ppt_tot,ylim=c(max(precip$ppt_tot,na.rm=T),1),
+       type="n",axes=F,xlab='',xlim=xlim,ylab='')
+  drawHighlight()
+  
   #precip
-  par(oma=c(29,1,0,2))
+  par(new=T,oma=c(29,1,0,2))
   plot(plotPrecip$date,plotPrecip$ppt_tot,ylim=c(max(precip$ppt_tot,na.rm=T),1),
        type="h",lwd=3,lend=2,col="snow4",axes=F,xlab='',xlim=xlim,
        ylab='',main="Precipitation, Streamflow, Air Temperature, and Stream Temperature")
+  
+  
   #graphics::box(bty="7")
   axis(side=2)
   mtext(text="Precipitation (mm)", side=2,line=2.2,col="snow4", font=2)
@@ -318,6 +374,7 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
     mtext(text="Streamflow (cfs)",side=4,line=2.2, col="blue", font=2)
   }
   
+  
   #airTemp
   if(length(temp$airtemp_max>=1)){
     par(new=T,oma=c(15,1,11,2))
@@ -328,6 +385,8 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
     axis(side=2,at=c(-20,-10,0,10,20))
     mtext(text="Air Temperature (C)",side=2,line=2.2,font=2)
   }
+  
+  
   #streamTemp
   par(new=T,oma=c(8,1,19,2))
   plot(dayTemp$date,dayTemp$mean,xlim=xlim,ylim=c(0,max(dayTemp$max,na.rm=T)),
@@ -337,16 +396,94 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
   axis(side=4)
   mtext(text='Stream Temperature (C)',font=2,side=4,line=2.2)
   
+  
   #n
   par(new=T,oma=c(1,1,28,2))
   plot(dayTemp$date,dayTemp$n,xlim=xlim,axes=F,xlab='',ylab='',type='l',ylim=c(0,20))
-  abline(h=10,lty=3)
+  #abline(h=10,lty=3)
   #temp elev r2*10 line.  relies on muchData from ElevAcrossTime.R
   #lines(muchData$day,muchData$elev_r2*10,lty=1,lwd=2)
   axis(side=2,at=c(0,5,10,15))
   mtext(text="# of Sites",side=2, font=2, line=2.2)
   axis.Date(side=1,at=seq.Date(from=startDate,to=endDate,length.out=12), las=3, format="%e-%b-%Y")
   
-  #fitted Times
-  #abline(v=as.Date("2015-01-01"))
+  
+}
+
+plotSet=function(sitesSet){
+  sitesSet=unique(sitesSet$SiteIDX)
+  library(sp)
+  library(raster)
+  library(sf)
+  library(units)
+  
+  gc_net=st_read("C:/Users/Sam/Desktop/spatial/QgisEnvironment/Active/d8_500_simple/GlacStreamSegments.shp",quiet=T)
+  gc_net$length=st_length(gc_net)
+  
+  nsv_net=st_read("C:/Users/Sam/Desktop/spatial/QgisEnvironment/Active/d8_500_simple/NSVStreamSegments.shp",quiet=T)
+  #drop 1-point lines from nev multiline
+  nsv_net$length=st_length(nsv_net)
+  nsv_net=nsv_net[nsv_net$length>=set_units(10,m),]
+  par(mfrow=c(1,1))
+  
+  plot(st_geometry(rbind(nsv_net,gc_net)),lwd=2,col="grey")
+  
+  #load all points:
+  loggerSites=st_read("C:/Users/Sam/Desktop/spatial/QgisEnvironment/Active/sitesLakeInfluence_tempPaper2/Inputs/NSVGCloggers.shp",quiet = T)
+  plot(st_geometry(loggerSites),add=T,pch=9,cex=1.5,lab=theseLoggers$SiteIDX,col="grey")
+  
+  theseLoggers=loggerSites[loggerSites$SiteIDX %in% sitesSet,]
+  plot(st_geometry(theseLoggers),add=T,pch=9,cex=1.5,lab=theseLoggers$SiteIDX)
+  
+}
+
+setLength=function(set){
+  f=filterToSet(set)
+  return(length(unique(f$day)))
+}
+
+setEnd=function(set){
+  f=filterToSet(set)
+  return(max(f$day))
+}
+
+smoothByWindow=function(set,window){
+  set$day=as.Date(set$day)
+  set$periodMean=0
+  sites=unique(set$SiteIDX)
+  days=unique(set$day)
+  for(s in sites){
+    for(d in days){
+      d=as.Date(d,origin ="1970-01-01")
+      set[set$SiteIDX==s & set$day==d,"periodMean"]=mean(
+        set[set$site==s & set$day>d-(window/2) & set$day<d+(window/2),"Observation"]
+      )
+    }
+  }
+  set$Observation=set$periodMean
+  return(set[,-11])
+}
+
+fitAllModels=function(set){
+  days=as.Date(unique(set$DateTimeLocal))
+  fitModelsByDay=function(day,set){
+    thisSet=set[set$DateTimeLocal==as.Date(day),]
+    return(fitStreamTemp(thisSet))
+  }
+  allFits=lapply(days,fitModelsByDay,set=set)
+  
+  modelAicR=data.frame(day=days)
+  getModelMetric=function(fitDay,model,metric){
+    return(fitDay[fitDay$name==model,names(fitDay)==metric])
+  }
+  models=c('Es','Us','El','Fl','Es_Us','Fl(Es_El)','Fl(Us_El)','Fl(Es_Us_El)','Es_El','Es_Us_El'
+           ,'Us_El','El_Fl','Es_El_Fl','Es_Us_El_Fl','Us_El_Fl','Es_Fl','Es_Us_Fl','Us_Fl')
+  
+  for(model in models){
+    modelAicR$temp=sapply(allFits,getModelMetric,model=model,metric="dAICc_0")
+    names(modelAicR)[names(modelAicR)=="temp"]=paste0(model,"_dAIC")
+    modelAicR$temp=sapply(allFits,getModelMetric,model=model,metric="r_2")
+    names(modelAicR)[names(modelAicR)=="temp"]=paste0(model,"_r2")
+  }
+  return(modelAicR)
 }
