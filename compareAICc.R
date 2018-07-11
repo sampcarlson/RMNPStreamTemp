@@ -69,9 +69,19 @@ highlight=data.frame(start=c("2014-09-17","2014-08-21","2014-08-13","2014-10-13"
 
 makeTsPlot(highlight=highlight)
 
+
 set16=filterToSet(c(2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,19))
-smooth16=smoothByWindow(set16,10)
+set16_singleFit=fitSimpleModels(set16)
+set16_summary=fitAllModels(set16)
+plot(set16_summary$day,set16_summary$`Fl(Es_El)_dAIC`,ylim=c(5,0),type="l",lwd=2)
+lines(set16_summary$day,set16_summary$Es_dAIC,lty=2)
+lines(set16_summary$day,set16_summary$Fl_dAIC,lty=3)
+
+
+smooth16=smoothByWindow(set16,5)
 smooth16_singleFit=fitSimpleModels(smooth16)
 smooth16_summary=fitAllModels(smooth16)
 plot(smooth16_summary$day,smooth16_summary$`Fl(Es_El)_dAIC`,ylim=c(5,0),type="l")
 lines(smooth16_summary$day,smooth16_summary$Es_dAIC,lty=2)
+
+makeTsPlot(startDate=as.Date("2014-09-20"),endDate=as.Date("2014-10-20"))

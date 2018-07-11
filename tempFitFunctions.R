@@ -44,7 +44,7 @@ buildTempData=function(){
   return(tempData)
 }
 
-fitSimpleModels=function(tempData){
+fitSimpleModels=function(tempData, plot=T){
   
   fitGetR_elev=function(date){
     date=as.Date(date)
@@ -83,9 +83,9 @@ fitSimpleModels=function(tempData){
   fitDF$lf_r2=sapply(fitDF$day,FUN=fitGetR_lf)
   fitDF$el_r2=sapply(fitDF$day,FUN=fitGetR_el)
   fitDF$N=sapply(fitDF$day,FUN=getN)
-  
-  plotSimpleModels(fitDF)
-  
+  if(plot==T){
+    plotSimpleModels(fitDF)
+  }
   return(fitDF)
   
 }
@@ -486,4 +486,49 @@ fitAllModels=function(set){
     names(modelAicR)[names(modelAicR)=="temp"]=paste0(model,"_r2")
   }
   return(modelAicR)
+}
+
+
+plotMultipleSets=function(setIDs,allsets=all8Sets){
+  library(tidyverse)
+  df=data.frame(day=numeric(),
+                streamElev_r2=numeric(),
+                lakeElev_r2=numeric())
+  for (setID in setIDs){
+    set=all8Sets[setID]
+    thisSetData=filterToSet(set)
+    thisSetData=smoothByWindow(thisSetData,10)
+    thisSetFit=fitSimpleModels(thisSetData,F)
+    df=rbind(df,data.frame(day=as.Date(thisSetFit$day),
+                           streamElev_r2=thisSetFit$elev_r2,
+                           lakeElev_r2=thisSetFit$el_r2))
+  }
+  # getQuantile=function(metric,day,quantile){
+  #   tempVect=df[df$day==day,metric]
+  #   q=quantile(tempVect,quantile)
+  # }
+  df$dayNumeric=as.numeric(df$day)
+
+  loess_span=1/11 #~11 months represented, so span (window) ~ = 1 month
+  summaryDF=left_join(data.frame(loess.smooth(x=df$dayNumeric,y=df$streamElev_r2,evaluation=length(unique(df$dayNumeric)),span=loess_span)),
+                      data.frame(loess.smooth(x=df$dayNumeric,y=df$lakeElev_r2,evaluation=length(unique(df$dayNumeric)),span=loess_span)),by=c("x"="x"))
+  names(summaryDF)=c("day","str_lowess","lak_lowess")
+  summaryDF$day=as.Date(summaryDF$day, origin=as.Date("1970-01-01"))
+  
+  summaryDF=summaryDF[order(summaryDF),]
+  windows()
+  plot(df$day,df$streamElev_r2,pch=19,cex=0.75,col=rgb(r=96,g=142,b=211,alpha=120,maxColorValue = 255))
+  points(df$day,df$lakeElev_r2,pch=19,cex=0.75,col=rgb(r=211,g=96,b=96,alpha=30,maxColorValue = 255))
+
+  lines(summaryDF$day,summaryDF$str_lowess,lwd=6,col="white")
+  lines(summaryDF$day,summaryDF$str_lowess,lwd=3,col=rgb(r=45,g=92,b=163,maxColorValue = 255))
+  
+  lines(summaryDF$day,summaryDF$lak_lowess,lwd=6,col="white")
+  lines(summaryDF$day,summaryDF$lak_lowess,lwd=3,col=rgb(r=165,g=76,b=76,maxColorValue = 255))
+  
+  
+  legend(x="topright",legend=c("streamElev_r^2", "lakeElev_r^2"),pch=19,cex=1, 
+         col=c(rgb(r=96,g=142,b=211,maxColorValue = 255),
+               rgb(r=211,g=96,b=96,maxColorValue = 255)),bty="n")
+  #return(df)
 }

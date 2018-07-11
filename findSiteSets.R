@@ -32,7 +32,7 @@ plot(set10fit$day,set10fit$elev_r2)
 
 #best 9 set occurs on 2014-10-28
 set9=getSetByDate("2014-10-28")
-set9fit=SimpleModels(set9)
+set9fit=fitSimpleModels(set9)
 plot(set9fit$day,set9fit$elev_r2)
 
 plotSet(set9)
@@ -40,11 +40,11 @@ plotSet(set9)
 #manually identified sets:
 set10_2=c(2,4,7,8,11,12,13,14,17,19)
 set10_2=filterToSet(set10_2)
-set10_2fit=SimpleModels(set10_2)
+set10_2fit=fitSimpleModels(set10_2)
 plot(set10_2fit$day,set10_2fit$elev_r2)
 
 
-#all 16
+#all 8 and 16
 set16=getSetByDate("2014-08-21")
 all8Sets=combn(unique(set16$SiteIDX),8,simplify=F)
 
@@ -53,6 +53,11 @@ set8Info=data.frame(id=1:length(all8Sets))
 #this takes ~30 minutes
 set8Info$length=sapply(all8Sets,setLength)
 set8Info$end=sapply(all8Sets,setEnd)
+
+set8_long=set8Info[set8Info$length>=100,]
+
+plotMultipleSets(set8_long$id)
+
 
 lateSets=set8Info[set8Info$end>="2015-05-15",]
 lateSets
