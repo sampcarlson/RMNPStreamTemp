@@ -23,7 +23,8 @@ buildTempData=function(){
   names(lakeData)=c("SiteIDX","LF","FlowWtMeanLakeElev")
   tempData=left_join(tempData,lakeData)
   
-  siteData=read.csv("C:\\Users\\Sam\\Desktop\\spatial\\sites\\sites_elevation_uaa_corrected.csv",header = T)[c("SiteIDX","Elevation","uaa")]
+  siteData=read.csv("C:\\Users\\Sam\\Desktop\\spatial\\QgisEnvironment\\Active\\sitesLakeInfluence_tempPaper2\\Inputs\\NSV_GC_Loggers.csv",header = T)[c("SiteIDX","Elevation","UAA")]
+  names(siteData)[names(siteData)=="UAA"]="uaa"
   tempData=left_join(tempData,siteData)
   
   aggMeanFun=function(x){
@@ -36,10 +37,9 @@ buildTempData=function(){
     }
   }
   
+  tempData$day=as.Date(tempData$DateTimeLocal)
   
-  tempData=aggregate(tempData[c("Observation","DateTimeLocal","DeploymentIDX","SiteIDX","LF","FlowWtMeanLakeElev","Elevation","uaa")],by=list(site=tempData$SiteIDX,day=tempData$DateTimeLocal),FUN=aggMeanFun)
-  
-  tempData$DateTimeLocal=as.Date(tempData$DateTimeLocal)
+  tempData=aggregate(tempData[c("Observation","day","DeploymentIDX","SiteIDX","LF","FlowWtMeanLakeElev","Elevation","uaa")],by=list(site=tempData$SiteIDX,day=tempData$day),FUN=aggMeanFun)
   
   return(tempData)
 }
@@ -48,36 +48,36 @@ fitSimpleModels=function(tempData, plot=T){
   
   fitGetR_elev=function(date){
     date=as.Date(date)
-    tempDataDay=tempData[tempData$DateTimeLocal==date,]
+    tempDataDay=tempData[tempData$day==date,]
     r=summary(lm(tempDataDay$Observation~tempDataDay$Elevation))$r.squared
     return(r)
   }
   fitGetR_uaa=function(date){
     date=as.Date(date)
-    tempDataDay=tempData[tempData$DateTimeLocal==date,]
+    tempDataDay=tempData[tempData$day==date,]
     r=summary(lm(tempDataDay$Observation~tempDataDay$uaa))$r.squared
     return(r)
   }
   fitGetR_lf=function(date){
     date=as.Date(date)
-    tempDataDay=tempData[tempData$DateTimeLocal==date,]
+    tempDataDay=tempData[tempData$day==date,]
     r=summary(lm(tempDataDay$Observation~tempDataDay$LF))$r.squared
     return(r)
   }
   fitGetR_el=function(date){
     date=as.Date(date)
-    tempDataDay=tempData[tempData$DateTimeLocal==date,]
+    tempDataDay=tempData[tempData$day==date,]
     r=summary(lm(tempDataDay$Observation~tempDataDay$FlowWtMeanLakeElev))$r.squared
     return(r)
   }
   getN=function(date){
     date=as.Date(date)
-    tempDataDay=tempData[tempData$DateTimeLocal==date,]
+    tempDataDay=tempData[tempData$day==date,]
     n=length(unique(tempDataDay$SiteIDX))
     return(n)
   }
   
-  fitDF=data.frame(day=unique(tempData$DateTimeLocal))
+  fitDF=data.frame(day=unique(tempData$day))
   fitDF$elev_r2=sapply(fitDF$day,FUN=fitGetR_elev)
   fitDF$uaa_r2=sapply(fitDF$day,FUN=fitGetR_uaa)
   fitDF$lf_r2=sapply(fitDF$day,FUN=fitGetR_lf)
@@ -137,6 +137,7 @@ getSetByDate=function(d){
 getAllSets=function(tempData){
   
   countSetOccurance=function(set,thisTempData){
+    
     days=unique(thisTempData$day)
     
     isDayInSet=function(d,set,thisTempData){
@@ -183,7 +184,7 @@ fitStreamTemp=function(tempData, plotContext=F){
   n=length(unique(tempData$SiteIDX))
   
   if(n == n_all){
-    #  print(paste("n =",n))
+    print(paste("n =",n))
   } else {
     print(paste0("n = ",n,", ",n_all-n," incomplete observations removed"))
   }
@@ -355,22 +356,22 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
   drawHighlight()
   
   #precip
-  par(new=T,oma=c(29,1,0,2))
+  par(new=T,oma=c(32,1,0,2))
   plot(plotPrecip$date,plotPrecip$ppt_tot,ylim=c(max(precip$ppt_tot,na.rm=T),1),
        type="h",lwd=3,lend=2,col="snow4",axes=F,xlab='',xlim=xlim,
-       ylab='',main="Precipitation, Streamflow, Air Temperature, and Stream Temperature")
+       ylab='',main="Precipitation, Streamflow, Air Temperature, and Stream Temperature", cex.main=1.1)
   
   
   #graphics::box(bty="7")
-  axis(side=2)
+  axis(side=2, at=c(0,25,50))
   mtext(text="Precipitation (mm)", side=2,line=2.2,col="snow4", font=2)
   
   #streamflow
   if(length(flow$Flow>=1)){
     par(new=T,oma=c(25,1,4,2))
-    plot(flow$DateTime,flow$Flow,type="l",axes=F,xlab="",ylab="",
+    plot(flow$DateTime,flow$Flow,type="p",pch=20,cex=0.5,axes=F,xlab="",ylab="",log="y",
          col="blue",ylim=c(min(flow$Flow),max(flow$Flow)))
-    axis(side=4)
+    axis(side=4, at=c(10, 100, 500))
     mtext(text="Streamflow (cfs)",side=4,line=2.2, col="blue", font=2)
   }
   
@@ -383,12 +384,12 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
     segments(x0=temp$date,y0=temp$airtemp_min,y1=temp$airtemp_max,lwd=5,col="grey")
     lines(temp$date,temp$airtemp_avg,lwd=2)
     axis(side=2,at=c(-20,-10,0,10,20))
-    mtext(text="Air Temperature (C)",side=2,line=2.2,font=2)
+    mtext(text="       Air Temperature (C)",side=2,line=2.2,font=2)
   }
   
   
   #streamTemp
-  par(new=T,oma=c(8,1,19,2))
+  par(new=T,oma=c(9,1,19,2))
   plot(dayTemp$date,dayTemp$mean,xlim=xlim,ylim=c(0,max(dayTemp$max,na.rm=T)),
        axes=F,xlab='',ylab='',type="n",bty="n")
   segments(x0=dayTemp$date,y0=dayTemp$min,y1=dayTemp$max,lwd=5,col="grey")
@@ -465,9 +466,9 @@ smoothByWindow=function(set,window){
 }
 
 fitAllModels=function(set){
-  days=as.Date(unique(set$DateTimeLocal))
+  days=as.Date(unique(set$day))
   fitModelsByDay=function(day,set){
-    thisSet=set[set$DateTimeLocal==as.Date(day),]
+    thisSet=set[set$day==as.Date(day),]
     return(fitStreamTemp(thisSet))
   }
   allFits=lapply(days,fitModelsByDay,set=set)
@@ -488,7 +489,6 @@ fitAllModels=function(set){
   return(modelAicR)
 }
 
-
 plotMultipleSets=function(setIDs,allsets=all8Sets){
   library(tidyverse)
   df=data.frame(day=numeric(),
@@ -497,7 +497,7 @@ plotMultipleSets=function(setIDs,allsets=all8Sets){
   for (setID in setIDs){
     set=all8Sets[setID]
     thisSetData=filterToSet(set)
-    thisSetData=smoothByWindow(thisSetData,10)
+    #thisSetData=smoothByWindow(thisSetData,10)
     thisSetFit=fitSimpleModels(thisSetData,F)
     df=rbind(df,data.frame(day=as.Date(thisSetFit$day),
                            streamElev_r2=thisSetFit$elev_r2,
@@ -509,26 +509,33 @@ plotMultipleSets=function(setIDs,allsets=all8Sets){
   # }
   df$dayNumeric=as.numeric(df$day)
 
-  loess_span=1/11 #~11 months represented, so span (window) ~ = 1 month
-  summaryDF=left_join(data.frame(loess.smooth(x=df$dayNumeric,y=df$streamElev_r2,evaluation=length(unique(df$dayNumeric)),span=loess_span)),
-                      data.frame(loess.smooth(x=df$dayNumeric,y=df$lakeElev_r2,evaluation=length(unique(df$dayNumeric)),span=loess_span)),by=c("x"="x"))
-  names(summaryDF)=c("day","str_lowess","lak_lowess")
+  loess_span=1/6 #~12 months represented, so span (window) ~ = 2 months
+  
+  l_stream=loess(df$streamElev_r2~df$dayNumeric, span=loess_span)
+  l_lake=loess(df$lakeElev_r2~df$dayNumeric, span=loess_span)
+  summaryDF=left_join(data.frame(day=l_stream$x,str_lowess=l_stream$fitted),
+                      data.frame(day=l_lake$x,lak_loess=l_lake$fitted),by=c("df.dayNumeric"="df.dayNumeric"))
+  names(summaryDF)=c("day","str_loess","lak_loess")
   summaryDF$day=as.Date(summaryDF$day, origin=as.Date("1970-01-01"))
   
   summaryDF=summaryDF[order(summaryDF),]
   windows()
-  plot(df$day,df$streamElev_r2,pch=19,cex=0.75,col=rgb(r=96,g=142,b=211,alpha=120,maxColorValue = 255))
-  points(df$day,df$lakeElev_r2,pch=19,cex=0.75,col=rgb(r=211,g=96,b=96,alpha=30,maxColorValue = 255))
-
-  lines(summaryDF$day,summaryDF$str_lowess,lwd=6,col="white")
-  lines(summaryDF$day,summaryDF$str_lowess,lwd=3,col=rgb(r=45,g=92,b=163,maxColorValue = 255))
+  par(mar=c(7,4,4,2))
+  plot(df$day,round(df$streamElev_r2,2),pch=4,cex=1,ylim=c(0,1),xlab="",ylab="r^2",axes=F,col=rgb(0,0,0,0.2)) #col=rgb(r=96,g=142,b=211,alpha=120,maxColorValue = 255)
+  points(df$day,round(df$lakeElev_r2,2),pch=3,cex=1,col=rgb(0,0,0,0.2)) #col=rgb(r=211,g=96,b=96,alpha=30,maxColorValue = 255)
   
-  lines(summaryDF$day,summaryDF$lak_lowess,lwd=6,col="white")
-  lines(summaryDF$day,summaryDF$lak_lowess,lwd=3,col=rgb(r=165,g=76,b=76,maxColorValue = 255))
+  lines(summaryDF$day,summaryDF$str_loess,lwd=6,col="white")
+  lines(summaryDF$day,summaryDF$str_loess,lwd=3,lty=1) #col=rgb(r=45,g=92,b=163,maxColorValue = 255)
   
+  lines(summaryDF$day,summaryDF$lak_loess,lwd=6,col="white")
+  lines(summaryDF$day,summaryDF$lak_loess,lwd=3,lty=3) #col=rgb(r=165,g=76,b=76,maxColorValue = 255)
   
-  legend(x="topright",legend=c("streamElev_r^2", "lakeElev_r^2"),pch=19,cex=1, 
-         col=c(rgb(r=96,g=142,b=211,maxColorValue = 255),
-               rgb(r=211,g=96,b=96,maxColorValue = 255)),bty="n")
+  axis.Date(side=1,at=seq.Date(from=as.Date("2014-08-01"),to=as.Date("2015-08-01"),by="month"), las=3, format="%e-%b-%Y")
+  axis(side=2,at=c(0,0.2,0.4,0.6,0.8,1))
+  
+  legend(x="topright",legend=c("Stream Elevation individual fit","Stream Elevation loess fit","Lake Elevation individual fit","Lake Elevation loess fit"),
+         pch=c(4,NA,3,NA),lty=c(NA,1,NA,3),lwd=c(1,3,1,3), 
+         bty="n")
+  #col=c(rgb(r=96,g=142,b=211,maxColorValue = 255),rgb(r=211,g=96,b=96,maxColorValue = 255)),
   #return(df)
 }
