@@ -9,19 +9,19 @@ fitStreamTemp(tempData0)
 
 #period around 9-20 - unavoidable (small) rain event in any 10 day period
 tempData1=tempData[tempData$DateTimeLocal>=as.Date("2014-09-18") & tempData$DateTimeLocal<=as.Date("2014-9-28"),]
-fitStreamTemp(tempData1,T)
+fitStreamTemp(tempData1)
 #weighted_el_es is the most efficient model, and explains 71% of total variation
 #LF is best single explanatory variable, @ 0.35
 
 #shorter period around 9-20, , most data w/ no rain.  overwrites 10 day period
 tempData1=tempData[tempData$DateTimeLocal>=as.Date("2014-9-17") & tempData$DateTimeLocal<=as.Date("2014-9-21"),]
-fitStreamTemp(tempData1,T)
+fitStreamTemp(tempData1)
 #weighted_el_es is the most efficient model, and explains 78% of total variation
 #LF is best single explanatory variable, @ 0.45
 
 #earliest 10 day period w/ 16 sites
 tempData2=tempData[tempData$DateTimeLocal>=as.Date("2014-08-21") & tempData$DateTimeLocal<=as.Date("2014-8-31"),]
-fitStreamTemp(tempData2, T)
+fitStreamTemp(tempData2)
 #weighted_el_es is the most efficient model, and explains 62% of total variation
 #LF is best single explanatory variable, @ 0.19
 
