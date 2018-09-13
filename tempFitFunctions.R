@@ -49,7 +49,7 @@ buildTempData=function(){
   return(tempData)
 }
 
-fitSimpleModels=function(tempData, plot=T){
+fitSimpleModels=function(tempData, plot=F){
   
   fitGetR_elev=function(date){
     date=as.Date(date)
@@ -212,7 +212,7 @@ fitStreamTemp=function(tempData, plotContext=F){
   tempData=aggregate(tempData,by=list(s=tempData$site),FUN=aggMeanFun)
   
   require(MuMIn)
-
+  
   
   #make the 'global'model huge (and redundant) for aic comparison:
   linearCombined=glm(Observation~I(FlowWtMeanLakeElev*LF)+LF+I(Elevation*(1-LF))+I(uaa*(1-LF))+Elevation+uaa,data=tempData,na.action=na.fail)
@@ -271,12 +271,12 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
   drawHighlight=function(cords=highlight){
     cords$start=as.Date(cords$start)
     cords$end=as.Date(cords$end)
-    cords$bottom=-20
+    cords$bottom=-0.75
     cords$top=1000
     rect(cords$start,cords$bottom,cords$end,cords$top, col=rgb(0.8,0.8,0.8,alpha=0.5),border=NA)
   }
   
-  require(RSQLite)
+  #require(RSQLite)
   require(dplyr)
   startDate=as.Date(startDate)
   endDate=as.Date(endDate)
@@ -297,6 +297,9 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
   flow$DateTime=as.POSIXct(flow$dateTimeString)
   flow=flow[as.Date(flow$DateTime)>=startDate & as.Date(flow$DateTime)<=endDate,]
   
+  #liters per foot^3:
+  flow$Flow_ls=flow$Flow*((12*2.54)^3/10^3)
+  
   aggMeanFun=function(x){
     if (is.numeric(x)){
       return(mean(x,na.rm=T))
@@ -312,28 +315,13 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
     return(length(u))
   }
   
-  TempDB=dbConnect(SQLite(),"C:\\Users\\Sam\\Documents\\LeakyRivers\\Data\\temperature\\leakyTemp.db3")
-  allData=dbGetQuery(TempDB,"SELECT Data.Observation, Data.DateTimeLocal, Deployments.SiteIDX FROM Data LEFT JOIN Deployments ON Data.DeploymentIDX = Deployments.DeploymentIDX WHERE Data.Status = 1 AND Deployments.SiteIDX <= 19")
-  dbDisconnect(TempDB)
-  
-  ag_result=aggregate(allData,by=list(date=allData$DateTimeLocal),FUN=min)
-  dayTemp=data.frame(date=ag_result$date,min=ag_result$Observation, stringsAsFactors = F)
-  
-  ag_result=aggregate(allData,by=list(date=allData$DateTimeLocal),FUN=aggMeanFun)[c("date","Observation")]
-  names(ag_result)[2]='mean'
-  dayTemp=left_join(dayTemp,ag_result, by="date")
-  
-  ag_result=aggregate(allData,by=list(date=allData$DateTimeLocal),FUN=max)[c("date","Observation")]
-  names(ag_result)[2]='max'
-  dayTemp=left_join(dayTemp,ag_result, by="date")
-  
-  ag_result=aggregate(allData,by=list(date=allData$DateTimeLocal),FUN=aggNFun)[c("date","SiteIDX")]
-  names(ag_result)[2]='n'
-  dayTemp=left_join(dayTemp,ag_result, by="date")
-  dayTemp=dayTemp[as.Date(dayTemp$date)>=startDate & as.Date(dayTemp$date)<=endDate,]
-  dayTemp$date=as.Date(dayTemp$date)
-  
-  
+  dayTemp=data.frame(date=unique(tempData$day),min=0,mean=0,max=0,n=0)
+  for (d in dayTemp$date){
+    dayTemp$min[dayTemp$date==d]=min(tempData$Observation[tempData$day==d])
+    dayTemp$mean[dayTemp$date==d]=mean(tempData$Observation[tempData$day==d])
+    dayTemp$max[dayTemp$date==d]=max(tempData$Observation[tempData$day==d])
+    dayTemp$n[dayTemp$date==d]=length(unique(tempData$site[tempData$day==d]))
+  }
   
   #make plot
   #windows(width=7.5, height=10)
@@ -348,20 +336,19 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
   
   #precip
   par(new=T,oma=c(34,1,0,2))
-  plot(plotPrecip$date,plotPrecip$ppt_tot,ylim=c(max(precip$ppt_tot,na.rm=T),1),
-       type="h",lwd=3,lend=2,col="snow4",axes=F,xlab='',xlim=xlim,
-       ylab='',main="Precipitation, Streamflow, Air Temperature, and Stream Temperature", cex.main=1.1)
+  plot(plotPrecip$date,plotPrecip$ppt_tot,ylim=c(max(precip$ppt_tot,na.rm=T),0),
+       type="h",lwd=2,lend=2,axes=F,xlab='',xlim=xlim,
+       ylab='',main="", cex.main=1.1)
   #graphics::box(bty="7")
   axis(side=2, at=c(0,25,50))
-  mtext(text="Precipitation (mm)", side=2,line=2.2,col="snow4", font=2)
+  mtext(text=expression('Precipitation (mm day'^'-1'*')'), side=2,line=2.2, font=1)
   
   #streamflow
   if(length(flow$Flow>=1)){
     par(new=T,oma=c(26,1,4,2))
-    plot(flow$DateTime,flow$Flow,type="p",pch=20,cex=0.5,axes=F,xlab="",ylab="",log="y",
-         col="blue",ylim=c(min(flow$Flow),max(flow$Flow)))
-    axis(side=4, at=c(10, 100, 500))
-    mtext(text="Streamflow (cfs)",side=4,line=2.2, col="blue", font=2)
+    plot(flow$DateTime,flow$Flow_ls,type="p",pch=".",cex=2,axes=F,xlab="",ylab="",log="y",ylim=c(50,22000))
+    axis(side=4,at=c(100,1000,10000))
+    mtext(text=expression('Streamflow (l sec'^'-1'*')'),side=4,line=2.2)
   }
   
   
@@ -369,11 +356,11 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
   if(length(temp$airtemp_max>=1)){
     par(new=T,oma=c(16,1,12,2))
     plot(temp$date,temp$airtemp_avg,axes=F,xlab="",ylab="",xlim=xlim,
-         ylim=c(min(temp$airtemp_min,na.rm=T),max(temp$airtemp_max,na.rm=T)+3),type="n")
+         ylim=c(min(temp$airtemp_min,na.rm=T)-5,max(temp$airtemp_max,na.rm=T)+3),type="n")
     segments(x0=temp$date,y0=temp$airtemp_min,y1=temp$airtemp_max,lwd=5,col="grey")
     lines(temp$date,temp$airtemp_avg,lwd=2)
     axis(side=2,at=c(-20,-10,0,10,20))
-    mtext(text="       Air Temperature (C)",side=2,line=2.2,font=2)
+    mtext(text=expression('            Air Temperature ('^' o'*'C)'),side=2,line=2.2)
   }
   
   
@@ -381,10 +368,10 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
   par(new=T,oma=c(9,1,20,2))
   plot(dayTemp$date,dayTemp$mean,xlim=xlim,ylim=c(0,max(dayTemp$max,na.rm=T)),
        axes=F,xlab='',ylab='',type="n",bty="n")
-  segments(x0=dayTemp$date,y0=dayTemp$min,y1=dayTemp$max,lwd=5,col="grey")
+  segments(x0=dayTemp$date,y0=dayTemp$min,y1=dayTemp$max,lwd=2,col="grey")
   lines(dayTemp$date,dayTemp$mean,lwd=2)
   axis(side=4)
-  mtext(text='Stream Temperature (C)',font=2,side=4,line=2.2)
+  mtext(text=expression('Stream Temperature ('^' o'*'C)'),side=4,line=2.2)
   
   
   #n
@@ -394,8 +381,8 @@ makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"
   #temp elev r2*10 line.  relies on muchData from ElevAcrossTime.R
   #lines(muchData$day,muchData$elev_r2*10,lty=1,lwd=2)
   axis(side=2,at=c(0,5,10,15))
-  mtext(text="# of Sites",side=2, font=2, line=2.2)
-  axis.Date(side=1,at=seq.Date(from=startDate,to=endDate,length.out=13), las=3, format="%e-%b-%Y")
+  mtext(text="# of Sites       ",side=2, line=2.2)
+  axis.Date(side=1,at=seq.Date(from=startDate,to=endDate,by="month"), las=3, format="%e-%b-%Y")
   
   dev.off()
   
@@ -501,7 +488,7 @@ plotMultipleSets=function(setIDs,allsets=all8Sets){
   df$med_stream=sapply(df$day,getQuantile,metric="streamElev_r2",quantile=.5)
   df$med_lake=sapply(df$day,getQuantile,metric="lakeElev_r2",quantile=.5)
   
-
+  
   #loess_span=1/6 #~12 months represented, so span (window) ~ = 2 months
   
   #l_stream=loess(df$streamElev_r2~df$dayNumeric, span=loess_span)
@@ -517,11 +504,11 @@ plotMultipleSets=function(setIDs,allsets=all8Sets){
   plot(df$day,df$streamElev_r2,pch=1,cex=1,ylim=c(0,1),xlab="",ylab="r^2",axes=F,col=rgb(r=96,g=142,b=211,alpha=60,maxColorValue = 255)) #col=rgb(r=96,g=142,b=211,alpha=120,maxColorValue = 255)
   points(df$day,df$lakeElev_r2,pch=2,cex=1,col=rgb(r=211,g=96,b=96,alpha=60,maxColorValue = 255)) #col=rgb(r=211,g=96,b=96,alpha=30,maxColorValue = 255)
   
-  lines(df$day,df$med_stream,lwd=6,col="white")
-  lines(df$day,df$med_lake,lwd=6,col="white")
+  lines(df$day,df$med_stream,lwd=4,col="white")
+  lines(df$day,df$med_lake,lwd=4,col="white")
   
-  lines(df$day,df$med_lake,lwd=3,lty=3,col=rgb(r=165,g=76,b=76,maxColorValue = 255)) #col=rgb(r=165,g=76,b=76,maxColorValue = 255)
   lines(df$day,df$med_stream,lwd=3,lty=1,col=rgb(r=45,g=92,b=163,maxColorValue = 255)) #col=rgb(r=45,g=92,b=163,maxColorValue = 255)
+  lines(df$day,df$med_lake,lwd=3,lty=3,col=rgb(r=165,g=76,b=76,maxColorValue = 255)) #col=rgb(r=165,g=76,b=76,maxColorValue = 255)
   
   
   
@@ -541,3 +528,4 @@ plotMultipleSets=function(setIDs,allsets=all8Sets){
          bty="n")
   dev.off()
 }
+
