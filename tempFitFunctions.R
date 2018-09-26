@@ -264,6 +264,7 @@ fitStreamTemp=function(tempData, plotContext=F){
   display=merge(x=display,y=modelNames,by='internalModelID',all.x=TRUE,sort=FALSE)[,c('name','r_2','AICc','deltaAICc')]
   display$dAICc_0=display$deltaAICc-min(display$deltaAICc)
   return(display[,c("name","r_2","dAICc_0")])
+  #return(d)
 }
 
 makeTsPlot=function(startDate=as.Date("2014-08-01"),endDate=as.Date("2015-08-01"), highlight=data.frame(start="2014-01-01",end="2014-01-02")){

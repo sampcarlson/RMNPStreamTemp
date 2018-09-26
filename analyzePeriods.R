@@ -51,6 +51,8 @@ makeTexTable=function(period){
 
 #n=17, Fl(Es_El) wins
 period1=tempData[tempData$day>=as.Date("2014-8-24") & tempData$day<=as.Date("2014-8-28"),]
+fit=fitStreamTemp(period1)
+summary(fit)
 makeTexTable(period1)
 
 #n=16, Fl(Es_El) wins
