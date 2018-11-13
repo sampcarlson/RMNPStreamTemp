@@ -1,5 +1,5 @@
 library(tidyverse)
-source('~/R Projects/RMNPStreamTemp/tempFitFunctions.R')
+source('~/R/projects/RMNPStreamTemp/tempFitFunctions.R')
 tempData=buildTempData()
 
 tempData_lake=tempData[tempData$SiteIDX!=19,]# drop glacier knobs (site w/ no LoI)
@@ -60,8 +60,8 @@ fitDF=fitDF[fitDF$day<=as.Date("2015-05-30"),]
 png(filename="streamLake_r2.png",width=10,height=7.5, units="in", res=300)
 
 par(mar=c(7,4,1,1))
-plot(fitDF$day,fitDF$elev_r2,pch=16,cex=1.2,ylim=c(0,1.08),xlab="",ylab="",axes=F,col=rgb(0,0,0,0.3))
-points(fitDF$day,fitDF$el_r2,pch=17,cex=1.2,col=rgb(0,0,0,0.3))
+plot(fitDF$day,fitDF$elev_r2,pch=1,cex=1.1,ylim=c(0,1.08),xlab="",ylab="",axes=F,col=rgb(0,0,0,0.3))
+points(fitDF$day,fitDF$el_r2,pch=4,cex=1.1,col=rgb(0,0,0,0.3))
 
 
 lines(fitDF$day,fitDF$med_stream,lwd=8,col="white")
@@ -77,7 +77,7 @@ axis(side=2,at=c(0,0.2,0.4,0.6,0.8,1))
 mtext(expression('Explanatory r'^'2'),side = 2,line=2)
 
 legend(x="topright",legend=c("Stream Elevation fit (equation 4)","5-day Median Stream Elevation fit","Lake Elevation fit (equation 7)","5-day Median Lake Elevation fit"),
-       pch=c(16,NA,17,NA),lty=c(NA,1,NA,3),lwd=c(1,2.5,1,2.5), 
+       pch=c(1,NA,4,NA),lty=c(NA,1,NA,3),lwd=c(1,2.5,1,2.5), 
        bty="n")
 dev.off()
 

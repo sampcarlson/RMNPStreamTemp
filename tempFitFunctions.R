@@ -19,15 +19,12 @@ buildTempData=function(){
   tempData=dbGetQuery(TempDB,"SELECT Data.Observation, Data.DateTimeLocal, Data.DeploymentIDX, Deployments.SiteIDX FROM Data LEFT JOIN Deployments ON Data.DeploymentIDX = Deployments.DeploymentIDX WHERE Data.Status = 1 AND Deployments.SiteIDX <= 19")
   dbDisconnect(TempDB)
   
-  lakeData=read.csv("C:\\Users\\Sam\\Desktop\\spatial\\QgisEnvironment\\Active\\sitesLakeInfluence_tempPaper2\\min_10000\\lakeFractionAndElevation.csv",header = F)
-  names(lakeData)=c("SiteIDX","LF","FlowWtMeanLakeElev")
-  tempData=left_join(tempData,lakeData)
   
-  #siteData=read.csv("C:\\Users\\Sam\\Desktop\\spatial\\sites\\sites_elevation_uaa_corrected.csv",header = T)[c("SiteIDX","Elevation","uaa")]  
+  loggerSiteData=read.csv("C:/Users/sam/Documents/R/Projects/findLakeInfluence/NSV_GC_loggers_LoIs.csv")
+  names(loggerSiteData)[names(loggerSiteData)=="meanLakeElev"]="FlowWtMeanLakeElev"
+  names(loggerSiteData)[names(loggerSiteData)=="UAA"]="uaa"
   
-  siteData=read.csv("C:\\Users\\Sam\\Desktop\\spatial\\QgisEnvironment\\Active\\sitesLakeInfluence_tempPaper2\\Inputs\\NSV_GC_Loggers.csv",header = T)[c("SiteIDX","Elevation","UAA","Descriptio")]
-  names(siteData)[names(siteData)=="UAA"]="uaa"
-  tempData=left_join(tempData,siteData)
+  tempData=left_join(tempData,loggerSiteData)
   
   aggMeanFun=function(x){
     if (is.numeric(x)){
